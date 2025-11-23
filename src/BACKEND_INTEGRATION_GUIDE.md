@@ -114,22 +114,28 @@ interface Category {
 
 ## AI Features (Optional - can use OpenAI/Anthropic API)
 
+**📌 Important:** See `/AI_API_KEY_SETUP.md` for detailed instructions on configuring AI API keys on your backend.
+
 ### Sentiment Analysis
 - The backend should analyze entry content and assign sentiment
 - Can use keywords or AI API (GPT/Claude) for analysis
+- **AI API keys must be configured on the backend** (see `/AI_API_KEY_SETUP.md`)
 - Return sentiment as part of the entry object
+- Example response: `{ sentiment: 'positive' | 'negative' | 'neutral' }`
 
 ### AI Suggestions
 - `POST /api/ai/suggestions` - Get AI suggestions for entry
   - Headers: `Authorization: Bearer <token>`
   - Body: `{ content: string }`
   - Returns: `{ suggestions: string[] }`
+  - **Backend should use OpenAI/Anthropic API** (keys configured on backend)
 
 ### AI Guidance Questions
 - `GET /api/ai/questions` - Get contextual questions
   - Headers: `Authorization: Bearer <token>`
   - Query: `?content=<partial_entry_text>`
   - Returns: `{ questions: string[] }`
+  - **Backend should use OpenAI/Anthropic API** (keys configured on backend)
 
 ## Frontend State Management Structure
 

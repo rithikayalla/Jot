@@ -6,7 +6,7 @@ import { Card } from './ui/card';
 import penImage from 'figma:asset/fe56ee1fb7372e08374978400f44651ed1ca56e1.png';
 
 interface LoginPageProps {
-  onLogin: (name: string, email: string) => void;
+  onLogin: (name: string, email: string, password: string, isSignUp: boolean) => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
@@ -14,13 +14,30 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSignUp && name && email && password) {
-      onLogin(name, email);
-    } else if (!isSignUp && email && password) {
-      onLogin(email.split('@')[0], email);
+    setError('');
+    
+    if (isSignUp && (!name || !email || !password)) {
+      setError('Please fill in all fields');
+      return;
+    }
+    
+    if (!isSignUp && (!email || !password)) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await onLogin(name, email, password, isSignUp);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,6 +61,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </p>
             </div>
 
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
             {isSignUp && (
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
@@ -54,6 +77,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  disabled={isLoading}
                   className="border-neutral-300"
                 />
               </div>
@@ -65,11 +89,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 id="email"
                 type="email"
                 placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="border-neutral-300"
-              />
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="border-neutral-300"
+                />
             </div>
 
             <div className="space-y-2">
@@ -78,22 +103,31 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 id="password"
                 type="password"
                 placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="border-neutral-300"
-              />
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="border-neutral-300"
+                />
             </div>
 
-            <Button type="submit" className="w-full bg-neutral-900 hover:bg-neutral-800">
-              {isSignUp ? 'Create Account' : 'Login'}
+            <Button 
+              type="submit" 
+              className="w-full bg-neutral-900 hover:bg-neutral-800"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : (isSignUp ? 'Create Account' : 'Login')}
             </Button>
 
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-sm text-neutral-600 hover:text-neutral-900"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError('');
+                }}
+                disabled={isLoading}
+                className="text-sm text-neutral-600 hover:text-neutral-900 disabled:opacity-50"
               >
                 {isSignUp ? 'Already have an account? Login' : "Don't have an account? Sign up"}
               </button>

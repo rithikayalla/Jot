@@ -1,5 +1,6 @@
-import { User, Mail, BookOpen, Calendar } from 'lucide-react';
+import { User, Mail, BookOpen, Calendar, LogOut } from 'lucide-react';
 import { Card } from './ui/card';
+import { Button } from './ui/button';
 import journalImage from 'figma:asset/029df8237b103edde71ff7d4422cc148a9cd768e.png';
 
 interface UserProfileProps {
@@ -8,9 +9,10 @@ interface UserProfileProps {
     email: string;
   };
   entriesCount: number;
+  onLogout?: () => void;
 }
 
-export function UserProfile({ user, entriesCount }: UserProfileProps) {
+export function UserProfile({ user, entriesCount, onLogout }: UserProfileProps) {
   const joinDate = new Date().toLocaleDateString('en-US', { 
     year: 'numeric', 
     month: 'long', 
@@ -33,7 +35,20 @@ export function UserProfile({ user, entriesCount }: UserProfileProps) {
                 <User className="w-12 h-12 text-neutral-600" />
               </div>
               <div className="flex-1">
-                <h2 className="mb-1">{user.name}</h2>
+                <div className="flex items-start justify-between mb-2">
+                  <h2 className="mb-1">{user.name}</h2>
+                  {onLogout && (
+                    <Button
+                      onClick={onLogout}
+                      variant="ghost"
+                      size="sm"
+                      className="text-neutral-600 hover:text-neutral-900"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 text-neutral-600 mb-4">
                   <Mail className="w-4 h-4" />
                   <span className="text-sm">{user.email}</span>

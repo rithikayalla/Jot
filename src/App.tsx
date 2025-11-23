@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoginPage } from './components/LoginPage';
 import { ModeSelection } from './components/ModeSelection';
 import { RandomEntryEditor } from './components/RandomEntryEditor';
@@ -8,6 +8,7 @@ import { WeeklySummary } from './components/WeeklySummary';
 import { AllEntriesView } from './components/AllEntriesView';
 import { NavigationBar } from './components/NavigationBar';
 import { UserProfile } from './components/UserProfile';
+import { authAPI, entriesAPI, categoriesAPI } from './services/api';
 
 export interface Entry {
   id: string;
@@ -25,22 +26,72 @@ export interface Category {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState({ name: '', email: '' });
   const [currentView, setCurrentView] = useState<'mode' | 'random' | 'categorized' | 'all-entries' | 'summary' | 'profile'>('mode');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
-  const [categories, setCategories] = useState<Category[]>([
-    { id: '1', name: 'Academic', color: '#3B82F6' },
-    { id: '2', name: 'Social', color: '#10B981' },
-    { id: '3', name: 'Family', color: '#F59E0B' },
-    { id: 'random', name: 'Random', color: '#6366F1' },
-  ]);
-
+  const [categories, setCategories] = useState<Category[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
 
-  const handleLogin = (name: string, email: string) => {
-    setCurrentUser({ name, email });
-    setIsLoggedIn(true);
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        if (authAPI.isAuthenticated()) {
+          const user = await authAPI.getCurrentUser();
+          setCurrentUser(user);
+          setIsLoggedIn(true);
+          await loadUserData();
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        authAPI.logout();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Load user categories and entries
+  const loadUserData = async () => {
+    try {
+      const [categoriesData, entriesData] = await Promise.all([
+        categoriesAPI.getAll(),
+        entriesAPI.getAll(),
+      ]);
+      
+      setCategories(categoriesData);
+      setEntries(entriesData);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
+  };
+
+  const handleLogin = async (name: string, email: string, password: string, isSignUp: boolean) => {
+    try {
+      const user = isSignUp 
+        ? await authAPI.signup(name, email, password)
+        : await authAPI.login(email, password);
+      
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      await loadUserData();
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error; // Let LoginPage handle the error display
+    }
+  };
+
+  const handleLogout = () => {
+    authAPI.logout();
+    setIsLoggedIn(false);
+    setCurrentUser({ name: '', email: '' });
+    setCategories([]);
+    setEntries([]);
+    setCurrentView('mode');
   };
 
   const handleModeSelect = (mode: 'random' | 'categorized') => {
@@ -51,38 +102,25 @@ export default function App() {
     }
   };
 
-  const handleSaveEntry = (content: string, category: string) => {
-    const sentiment = analyzeSentiment(content);
-    const newEntry: Entry = {
-      id: Date.now().toString(),
-      content,
-      category,
-      date: new Date(),
-      sentiment,
-    };
-    setEntries([...entries, newEntry]);
+  const handleSaveEntry = async (content: string, category: string) => {
+    try {
+      // Backend will handle sentiment analysis using AI
+      const newEntry = await entriesAPI.create(content, category);
+      setEntries([...entries, newEntry]);
+    } catch (error) {
+      console.error('Failed to save entry:', error);
+      alert('Failed to save entry. Please try again.');
+    }
   };
 
-  const analyzeSentiment = (content: string): 'positive' | 'negative' | 'neutral' => {
-    const positiveWords = ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing', 'love', 'beautiful', 'grateful', 'blessed'];
-    const negativeWords = ['sad', 'angry', 'frustrated', 'terrible', 'awful', 'hate', 'disappointed', 'stressed', 'worried', 'upset'];
-    
-    const lowerContent = content.toLowerCase();
-    const positiveCount = positiveWords.filter(word => lowerContent.includes(word)).length;
-    const negativeCount = negativeWords.filter(word => lowerContent.includes(word)).length;
-    
-    if (positiveCount > negativeCount) return 'positive';
-    if (negativeCount > positiveCount) return 'negative';
-    return 'neutral';
-  };
-
-  const handleAddCategory = (name: string, color: string) => {
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name,
-      color,
-    };
-    setCategories([...categories, newCategory]);
+  const handleAddCategory = async (name: string, color: string) => {
+    try {
+      const newCategory = await categoriesAPI.create(name, color);
+      setCategories([...categories, newCategory]);
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      alert('Failed to add category. Please try again.');
+    }
   };
 
   const handleCategorySelect = (categoryId: string) => {
@@ -95,6 +133,14 @@ export default function App() {
       setSelectedCategory(null);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-neutral-600">Loading...</p>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
@@ -148,7 +194,7 @@ export default function App() {
         )}
         
         {currentView === 'profile' && (
-          <UserProfile user={currentUser} entriesCount={entries.length} />
+          <UserProfile user={currentUser} entriesCount={entries.length} onLogout={handleLogout} />
         )}
       </main>
     </div>
